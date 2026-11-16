@@ -2,13 +2,9 @@
 
 import { usePathname } from "next/navigation";
 import { AppShell } from "@astryxdesign/core/AppShell";
-import { Banner } from "@astryxdesign/core/Banner";
 import { Divider } from "@astryxdesign/core/Divider";
-import { Icon } from "@astryxdesign/core/Icon";
-import { NavIcon } from "@astryxdesign/core/NavIcon";
 import {
   SideNav,
-  SideNavHeading,
   SideNavItem,
   SideNavSection,
 } from "@astryxdesign/core/SideNav";
@@ -19,8 +15,8 @@ import {
   Cog6ToothIcon,
   PencilSquareIcon,
   RectangleStackIcon,
-  SparklesIcon,
 } from "@heroicons/react/24/outline";
+import { AppHeader } from "@/components/app-header";
 
 const WORK = [
   { href: "/work/agent", label: "Agent", icon: ChatBubbleLeftRightIcon },
@@ -42,32 +38,12 @@ export function WorkShell({ children }: { children: React.ReactNode }) {
       height="fill"
       contentPadding={0}
       variant="section"
-      banner={
-        <Banner
-          status="info"
-          container="section"
-          title="页面骨架"
-          description="数字都是示意。采样、判读和发布还没接上。每天每模型最多采集 5 次。"
-        />
-      }
+      topNav={<AppHeader />}
       sideNav={
         <SideNav
           aria-label="工作台"
           collapsible
           resizable={{ defaultWidth: 248, minWidth: 200, maxWidth: 320 }}
-          header={
-            <SideNavHeading
-              heading="okdata GEO"
-              headingHref="/work/agent"
-              icon={<NavIcon icon={<Icon icon={SparklesIcon} size="sm" />} />}
-            />
-          }
-          footer={
-            <SideNavSection title="引导" isHeaderHidden>
-              <SideNavItem label="返回引导对话" href="/" />
-              <SideNavItem label="今日配额 0/5" isDisabled />
-            </SideNavSection>
-          }
         >
           <SideNavSection title="工作台">
             {WORK.map((item) => (
