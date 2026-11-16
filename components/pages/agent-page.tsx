@@ -95,6 +95,7 @@ export function AgentPage() {
       content={
         <LayoutContent padding={4}>
           <ChatLayout
+            style={{ height: "100%", minHeight: 0 }}
             composer={
               <ChatComposer
                 onSubmit={() => {}}
