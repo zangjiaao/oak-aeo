@@ -93,6 +93,37 @@ test("chat scrollbar is hidden while the conversation remains scrollable", async
   expect(await scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 });
 
+test("wide guide places vertical progress beside chat and keeps a compact narrow layout", async ({ page }) => {
+  await page.setViewportSize({ width: 1800, height: 900 });
+  await page.goto("/");
+  await expect(page.getByText("引导 · okdata · 会话已保存")).toBeVisible();
+  const rail = page.getByRole("complementary", { name: "引导进度" });
+  const chat = page.getByTestId("conversation-scroll");
+  await expect(rail.getByRole("list", { name: "引导进度" })).toBeVisible();
+  await expect(rail.getByRole("heading", { name: "引导进度" })).toHaveCount(0);
+  await expect(rail.locator("ol")).toHaveCount(0);
+  const activeStyle = await rail.locator('[aria-current="step"]').evaluate((element) => ({
+    size: parseFloat(getComputedStyle(element).fontSize), color: getComputedStyle(element).color,
+  }));
+  const inactiveStyle = await rail.getByRole("listitem").last().evaluate((element) => ({
+    size: parseFloat(getComputedStyle(element).fontSize), color: getComputedStyle(element).color,
+  }));
+  expect(activeStyle.size).toBeGreaterThan(inactiveStyle.size);
+  expect(activeStyle.color).not.toBe(inactiveStyle.color);
+  const railBox = await rail.boundingBox();
+  const chatBox = await chat.boundingBox();
+  expect(railBox).not.toBeNull();
+  expect(chatBox).not.toBeNull();
+  expect(railBox!.x + railBox!.width).toBeLessThan(chatBox!.x);
+  expect(chatBox!.width).toBeLessThanOrEqual(760);
+  await page.screenshot({ path: "test-results/guide-side-progress.png", fullPage: true });
+  await page.setViewportSize({ width: 900, height: 700 });
+  await expect(rail).toHaveCount(0);
+  await expect(page.getByRole("list", { name: "引导进度" })).toBeVisible();
+  await expect(page.locator("ol")).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: "消息内容" })).toBeVisible();
+});
+
 test("offline draft survives refresh; retry after a lost acknowledgement is idempotent", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("引导 · okdata · 会话已保存")).toBeVisible();

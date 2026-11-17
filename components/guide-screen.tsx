@@ -6,10 +6,25 @@ import { Conversation } from "@/components/conversation";
 import { onboardingStep } from "@/lib/onboarding-progress";
 import type { ConversationHistory } from "@/lib/conversation";
 import { AppShell } from "@astryxdesign/core/AppShell";
-import { Layout, LayoutHeader } from "@astryxdesign/core/Layout";
-import { Step, Stepper } from "@astryxdesign/core/Stepper";
+import { useMediaQuery } from "@astryxdesign/core/hooks";
+import { HStack, Layout, LayoutHeader, LayoutPanel, VStack } from "@astryxdesign/core/Layout";
+import { Text } from "@astryxdesign/core/Text";
+
+const STEPS = ["开场", "事实", "词根", "拓词", "冻结", "体检"] as const;
+
+function ProgressLabels({ activeStep, vertical }: { activeStep: number; vertical: boolean }) {
+  const labels = STEPS.map((label, index) =>
+    <Text key={label} as="p" display="block" role="listitem" aria-current={index === activeStep ? "step" : undefined}
+      type={index === activeStep ? "large" : "body"}
+      color={index === activeStep ? "accent" : index < activeStep ? "primary" : "secondary"}
+      weight={index === activeStep ? "semibold" : "normal"}>{label}</Text>);
+  return vertical ?
+    <VStack role="list" aria-label="引导进度" gap={6}>{labels}</VStack> :
+    <HStack role="list" aria-label="引导进度" gap={2} hAlign="between">{labels}</HStack>;
+}
 
 export function GuideScreen() {
+  const hasSideProgress = useMediaQuery("(min-width: 1400px)");
   const [history, setHistory] = useState<ConversationHistory | null>(null);
   const [sourceCount, setSourceCount] = useState(0);
   const [approvedFacts, setApprovedFacts] = useState(0);
@@ -29,25 +44,23 @@ export function GuideScreen() {
     return () => controller.abort();
   }, []);
   const activeStep = onboardingStep(history, sourceCount, approvedFacts);
+  const conversation = <Conversation onHistoryChange={setHistory} />;
   return (
     <AppShell height="fill" variant="section" contentPadding={0} topNav={<AppHeader />}>
-      <Layout
-        height="fill"
-        contentWidth={720}
-        header={
-          <LayoutHeader>
-            <Stepper activeStep={activeStep} label="引导进度">
-              <Step step={0} label="开场" />
-              <Step step={1} label="事实" />
-              <Step step={2} label="词根" />
-              <Step step={3} label="拓词" />
-              <Step step={4} label="冻结" />
-              <Step step={5} label="体检" />
-            </Stepper>
-          </LayoutHeader>
-        }
-        content={<Conversation onHistoryChange={setHistory} />}
-      />
+      {hasSideProgress ?
+        <Layout height="fill" contentWidth={1600}
+          start={<LayoutPanel width={300} padding={6} isScrollable={false} role="complementary" label="引导进度">
+            <VStack height="100%" vAlign="center">
+              <ProgressLabels activeStep={activeStep} vertical />
+            </VStack>
+          </LayoutPanel>}
+          content={<Layout height="fill" contentWidth={720} content={conversation} />}
+          end={<LayoutPanel width={300} padding={0} isScrollable={false} aria-hidden="true" />}
+        /> :
+        <Layout height="fill" contentWidth={720}
+          header={<LayoutHeader><ProgressLabels activeStep={activeStep} vertical={false} /></LayoutHeader>}
+          content={conversation}
+        />}
     </AppShell>
   );
 }
