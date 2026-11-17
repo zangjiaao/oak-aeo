@@ -28,7 +28,7 @@ async function readResponse(response: Response): Promise<ConversationHistory> {
   return body;
 }
 
-export function Conversation() {
+export function Conversation({ onHistoryChange }: { onHistoryChange?: (history: ConversationHistory) => void } = {}) {
   const [history, setHistory] = useState<ConversationHistory | null>(null);
   const [draft, setDraft] = useState<SendMessage>({ id: "", text: "" });
   const [loading, setLoading] = useState(true);
@@ -40,6 +40,8 @@ export function Conversation() {
   const [storageWarning, setStorageWarning] = useState("");
   const locked = useRef(false);
   const sendRevision = useRef(0);
+
+  useEffect(() => { if (history) onHistoryChange?.(history); }, [history, onHistoryChange]);
 
   function persist(next: SendMessage) {
     try {
@@ -186,7 +188,8 @@ export function Conversation() {
   const tooLong = draft.text.length > MAX_MESSAGE_LENGTH;
   return (
     <ChatLayout
-      style={{ height: "100%", minHeight: 0 }}
+      data-testid="conversation-scroll"
+      style={{ height: "100%", minHeight: 0, scrollbarWidth: "none" }}
       composer={
         <ChatComposer
           value={draft.text}

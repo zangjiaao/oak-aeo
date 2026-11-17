@@ -7,10 +7,12 @@ test("conversation continues between guide and workbench, reloads, and keeps mul
   await page.getByRole("textbox", { name: "消息内容" }).fill(message);
   await page.getByRole("button", { name: "发送消息", exact: true }).click();
   await expect(page.getByRole("log").getByText(message, { exact: true })).toBeVisible();
+  await expect(page.getByRole("list", { name: "引导进度" }).locator('[aria-current="step"]')).toContainText("事实");
   await expect(page.getByRole("article").filter({ hasText: message })).toContainText("已保存 · 等待模型配置");
   await expect(page.getByRole("textbox", { name: "消息内容" })).toHaveValue("");
   await page.reload();
   await expect(page.getByRole("log").getByText(message, { exact: true })).toBeVisible();
+  await expect(page.getByRole("list", { name: "引导进度" }).locator('[aria-current="step"]')).toContainText("事实");
   await page.getByRole("link", { name: "工作台", exact: true }).click();
   await expect(page).toHaveURL(/\/work\/agent$/);
   await expect(page.getByRole("log").getByText(message, { exact: true })).toBeVisible();
@@ -74,6 +76,21 @@ test("system settings report model readiness without exposing a key", async ({ p
   expect(status.missing).toContain("GEO_MODEL_API_KEY");
   expect(JSON.stringify(status)).not.toContain("你的密钥");
   expect((await request.post("/api/model")).status()).toBe(409);
+});
+
+test("chat scrollbar is hidden while the conversation remains scrollable", async ({ page, request }) => {
+  for (let index = 0; index < 2; index++) {
+    expect((await request.post("/api/conversation", { data: {
+      id: crypto.randomUUID(), text: `滚动检查 ${index} ${"内容".repeat(1400)}`,
+    } })).status()).toBe(200);
+  }
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await page.goto("/");
+  const scroll = page.getByTestId("conversation-scroll");
+  await expect.poll(() => scroll.evaluate((element) => element.scrollHeight - element.clientHeight)).toBeGreaterThan(0);
+  expect(await scroll.evaluate((element) => getComputedStyle(element).scrollbarWidth)).toBe("none");
+  await scroll.evaluate((element) => { element.scrollTop = 0; element.scrollBy(0, 300); });
+  expect(await scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 });
 
 test("offline draft survives refresh; retry after a lost acknowledgement is idempotent", async ({ page }) => {
