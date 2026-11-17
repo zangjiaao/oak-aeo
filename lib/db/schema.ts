@@ -70,3 +70,11 @@ export const agentActions = sqliteTable("agent_action", {
   completedAt: text("completed_at"),
   error: text("error"),
 });
+
+export const agentReplies = sqliteTable("agent_reply", {
+  messageId: text("message_id").primaryKey().references(() => messages.id),
+  status: text("status", { enum: ["running", "complete", "failed"] }).notNull(),
+  startedAt: text("started_at").notNull(),
+  completedAt: text("completed_at"),
+  error: text("error"),
+});

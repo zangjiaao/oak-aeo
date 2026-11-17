@@ -1,6 +1,6 @@
 export const CONVERSATION_ID = "okdata-onboarding";
 export const MAX_MESSAGE_LENGTH = 8000;
-export const WELCOME_MESSAGE = "你的产品，用一句话说是什么？也可以贴官网链接。口述会先记录为待处理消息，不会直接成为可引用事实。";
+export const WELCOME_MESSAGE = "你好，我是 okdata 的 GEO 助手。先用一句话介绍你的产品，或贴官网链接；我会继续追问。未经核验的口述不会直接成为可引用事实。";
 
 export function officialLink(text: string) {
   const match = text.match(/(?<![\w.-])(?:https:\/\/)?(?:www\.)?okdata\.online(?:\/[^\s，。；;)]*)?/i);

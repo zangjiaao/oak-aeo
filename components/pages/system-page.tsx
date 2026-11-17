@@ -54,7 +54,7 @@ export function SystemPage() {
     content={<LayoutContent padding={6}><VStack gap={5}>
       <VStack gap={2}>
         <Heading level={2}>Pi Agent 模型</Heading>
-        <Text type="body">当前用于官网来源的事实抽取；一般聊天回复尚未接入。</Text>
+        <Text type="body">用于会话自动回复与官网来源的事实抽取。配置后发送普通消息即可对话。</Text>
         {model ? <VStack gap={1}>
           <Text type="body">状态：{model.configured ? "已配置" : "未配置"}</Text>
           <Text type="supporting" color="secondary">模型：{model.model || "未设置"} · 接口域名：{model.endpoint || "未设置"}</Text>

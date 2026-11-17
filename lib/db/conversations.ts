@@ -1,7 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import { CONVERSATION_ID, WELCOME_MESSAGE, type ConversationHistory, type SendMessage } from "../conversation";
-import { conversations, messages, agentActions } from "./schema";
+import { conversations, messages, agentActions, agentReplies } from "./schema";
 
 export class MessageConflictError extends Error {}
 
@@ -73,5 +73,35 @@ export function conversationRepository(db: DrizzleD1Database<Record<string, unkn
       .where(eq(agentActions.messageId, messageId));
   }
 
-  return { history, append, findUserMessage, claimAnalysis, finishAnalysis, failAnalysis };
+  async function claimReply(messageId: string) {
+    const now = new Date().toISOString();
+    const inserted = await db.insert(agentReplies).values({ messageId, status: "running", startedAt: now })
+      .onConflictDoNothing().returning({ messageId: agentReplies.messageId });
+    if (inserted.length) return "claimed" as const;
+    const [reply] = await db.select().from(agentReplies).where(eq(agentReplies.messageId, messageId));
+    if (reply?.status === "complete") return "complete" as const;
+    if (reply?.status === "running" && Date.now() - Date.parse(reply.startedAt) < 60_000) return "running" as const;
+    await db.update(agentReplies).set({ status: "running", startedAt: now, completedAt: null, error: null })
+      .where(eq(agentReplies.messageId, messageId));
+    return "claimed" as const;
+  }
+
+  async function finishReply(messageId: string, response: string) {
+    const now = new Date().toISOString();
+    await db.batch([
+      db.insert(messages).values({ id: `agent-reply-${messageId}`, conversationId: CONVERSATION_ID,
+        role: "assistant", text: response, status: "complete", createdAt: now }).onConflictDoNothing(),
+      db.update(agentReplies).set({ status: "complete", completedAt: now, error: null })
+        .where(eq(agentReplies.messageId, messageId)),
+    ]);
+    return history();
+  }
+
+  async function failReply(messageId: string, error: string) {
+    await db.update(agentReplies).set({ status: "failed", error, completedAt: new Date().toISOString() })
+      .where(eq(agentReplies.messageId, messageId));
+  }
+
+  return { history, append, findUserMessage, claimAnalysis, finishAnalysis, failAnalysis,
+    claimReply, finishReply, failReply };
 }

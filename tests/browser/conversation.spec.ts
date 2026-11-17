@@ -7,7 +7,7 @@ test("conversation continues between guide and workbench, reloads, and keeps mul
   await page.getByRole("textbox", { name: "消息内容" }).fill(message);
   await page.getByRole("button", { name: "发送消息", exact: true }).click();
   await expect(page.getByRole("log").getByText(message, { exact: true })).toBeVisible();
-  await expect(page.getByRole("article").filter({ hasText: message })).toContainText("已保存 · 可分析官网链接");
+  await expect(page.getByRole("article").filter({ hasText: message })).toContainText("已保存 · 等待模型配置");
   await expect(page.getByRole("textbox", { name: "消息内容" })).toHaveValue("");
   await page.reload();
   await expect(page.getByRole("log").getByText(message, { exact: true })).toBeVisible();
@@ -21,6 +21,22 @@ test("conversation continues between guide and workbench, reloads, and keeps mul
   await page.getByRole("link", { name: "引导", exact: true }).click();
   await expect(page.getByRole("log").getByText(followup, { exact: true })).toBeVisible();
   await page.screenshot({ path: "test-results/conversation.png", fullPage: true });
+});
+
+test("normal chat saves the message and shows a usable setup path when the model is absent", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("link", { name: "配置 DeepSeek 模型" })).toBeVisible();
+  const message = `你好 ${crypto.randomUUID()}`;
+  await page.getByRole("textbox", { name: "消息内容" }).fill(message);
+  await page.getByRole("button", { name: "发送消息", exact: true }).click();
+  const bubble = page.getByRole("article").filter({ hasText: message });
+  await expect(bubble).toContainText("已保存 · 等待模型配置");
+  await expect(page.getByText(/Pi Agent 尚未配置/).last()).toBeVisible();
+  await expect(bubble.getByRole("button", { name: "让 Agent 回复" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("article").filter({ hasText: message })).toBeVisible();
+  await page.getByRole("link", { name: "配置 DeepSeek 模型" }).click();
+  await expect(page).toHaveURL(/\/work\/system$/);
 });
 
 test("chat link explicitly captures a source and persists the agent result", async ({ page, request }) => {
