@@ -8,7 +8,7 @@ import { HStack, VStack } from "@astryxdesign/core/Layout";
 import { Text } from "@astryxdesign/core/Text";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { Timestamp } from "@astryxdesign/core/Timestamp";
-import { CONVERSATION_ID, MAX_MESSAGE_LENGTH, isSendMessage, type ConversationHistory, type SendMessage } from "@/lib/conversation";
+import { CONVERSATION_ID, MAX_MESSAGE_LENGTH, isSendMessage, officialLink, type ConversationHistory, type SendMessage } from "@/lib/conversation";
 
 const DRAFT_KEY = `${CONVERSATION_ID}:draft:v1`;
 
@@ -183,6 +183,10 @@ export function Conversation() {
             <ChatMessage key={message.id} sender={message.role} avatar={message.role === "assistant" ? <Avatar name="Agent" size="md" /> : undefined}>
               <ChatMessageBubble variant={message.role === "assistant" ? "ghost" : "filled"}>
                 <Text type="body" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{message.text}</Text>
+                {message.role === "user" && officialLink(message.text) ? (
+                  <Button label="用官网链接建立来源快照" size="sm" variant="ghost"
+                    href={`/work/brand?url=${encodeURIComponent(officialLink(message.text)!)}`} />
+                ) : null}
               </ChatMessageBubble>
               <ChatMessageMetadata
                 timestamp={<Timestamp value={message.createdAt} format="time" />}

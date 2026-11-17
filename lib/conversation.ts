@@ -2,6 +2,13 @@ export const CONVERSATION_ID = "okdata-onboarding";
 export const MAX_MESSAGE_LENGTH = 8000;
 export const WELCOME_MESSAGE = "你的产品，用一句话说是什么？也可以贴官网链接。口述会先记录为待处理消息，不会直接成为可引用事实。";
 
+export function officialLink(text: string) {
+  const match = text.match(/(?<![\w.-])(?:https:\/\/)?(?:www\.)?okdata\.online(?:\/[^\s，。；;)]*)?/i);
+  if (!match) return null;
+  const candidate = match[0].replace(/[),，。；;]+$/, "");
+  return candidate.startsWith("https://") ? candidate : `https://${candidate}`;
+}
+
 export type ConversationMessage = {
   id: string;
   role: "assistant" | "user";

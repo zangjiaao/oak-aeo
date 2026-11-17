@@ -8,16 +8,19 @@
     "start": "next start",
     "lint": "eslint",
     "db:migrate": "wrangler d1 migrations apply DB --local",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "tsx --test tests/*.test.ts tests/*.test.mts",
     "test:e2e": "node scripts/test-e2e.mjs"
   },
   "dependencies": {
     "@astryxdesign/cli": "^0.7.16",
     "@astryxdesign/core": "^0.7.16",
     "@astryxdesign/theme-neutral": "^0.7.16",
+    "@earendil-works/pi-agent-core": "^1.5.2",
+    "@earendil-works/pi-ai": "^1.5.2",
     "@heroicons/react": "^2.2.0",
     "@stylexjs/stylex": "^0.19.2",
     "drizzle-orm": "^0.45.4",
+    "html-to-text": "^10.0.1",
     "next": "16.4.6",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -25,6 +28,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
+    "@types/html-to-text": "^9.0.4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -33,5 +37,6 @@
     "tsx": "^4.23.15",
     "typescript": "^5",
     "wrangler": "^4.163.0"
-  }
+  },
+  "type": "module"
 }

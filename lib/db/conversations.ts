@@ -5,7 +5,7 @@ import { conversations, messages } from "./schema";
 
 export class MessageConflictError extends Error {}
 
-export function conversationRepository(db: DrizzleD1Database) {
+export function conversationRepository(db: DrizzleD1Database<Record<string, unknown>>) {
   async function initialize() {
     const now = new Date().toISOString();
     // D1 batch is atomic; concurrent first visits cannot duplicate the welcome.
