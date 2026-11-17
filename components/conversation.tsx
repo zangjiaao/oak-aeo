@@ -12,6 +12,16 @@ import { CONVERSATION_ID, MAX_MESSAGE_LENGTH, isSendMessage, type ConversationHi
 
 const DRAFT_KEY = `${CONVERSATION_ID}:draft:v1`;
 
+function newMessageId() {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  // randomUUID is unavailable on some HTTP development hosts; getRandomValues remains available.
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 async function readResponse(response: Response): Promise<ConversationHistory> {
   const body = await response.json();
   if (!response.ok) throw new Error(body.error || "请求失败，请重试。");
@@ -26,6 +36,7 @@ export function Conversation() {
   const [error, setError] = useState("");
   const [storageWarning, setStorageWarning] = useState("");
   const locked = useRef(false);
+  const sendRevision = useRef(0);
 
   function persist(next: SendMessage) {
     try {
@@ -38,6 +49,7 @@ export function Conversation() {
 
   useEffect(() => {
     const controller = new AbortController();
+    const revision = sendRevision.current;
     async function restore() {
       let local: SendMessage | null = null;
       try {
@@ -56,6 +68,7 @@ export function Conversation() {
       try {
         const restored = await readResponse(await fetch("/api/conversation", { cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) }));
         if (controller.signal.aborted) return;
+        if (revision !== sendRevision.current) return;
         setHistory(restored);
         // A previous request may have committed even if its response was lost.
         if (local && restored.messages.some((message) => message.id === local.id && message.text === local.text.trim())) {
@@ -63,7 +76,9 @@ export function Conversation() {
           persist({ id: "", text: "" });
         }
       } catch (failure) {
-        if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : "无法加载会话，请检查网络后重试。");
+        if (!controller.signal.aborted && revision === sendRevision.current) {
+          setError(failure instanceof Error ? failure.message : "无法加载会话，请检查网络后重试。");
+        }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -89,14 +104,15 @@ export function Conversation() {
 
   function changeDraft(text: string) {
     if (locked.current) return;
-    const next = { id: crypto.randomUUID(), text };
+    const next = { id: newMessageId(), text };
     setDraft(next);
     persist(next);
   }
 
   async function send() {
-    if (locked.current || loading || !isSendMessage(draft)) return;
+    if (locked.current || !isSendMessage(draft)) return;
     locked.current = true;
+    sendRevision.current += 1;
     setSending(true);
     setError("");
     persist(draft);
@@ -106,6 +122,7 @@ export function Conversation() {
         body: JSON.stringify(draft), signal: AbortSignal.timeout(15000),
       }));
       setHistory(saved);
+      setLoading(false);
       setDraft({ id: "", text: "" });
       persist({ id: "", text: "" });
     } catch (failure) {
@@ -144,11 +161,11 @@ export function Conversation() {
               }}
             />
           }
-          sendButton={<Button label="发送消息" variant="primary" isLoading={sending} isDisabled={loading || !draft.text.trim() || tooLong} onClick={() => { void send(); }} />}
+          sendButton={<Button label="发送消息" variant="primary" isLoading={sending} isDisabled={!draft.text.trim() || tooLong} onClick={() => { void send(); }} />}
           status={error || tooLong || storageWarning ? { type: "error", message: error || (tooLong ? "每条最多 8000 字符，请分段发送。" : storageWarning) } : undefined}
           footerActions={
             <Text type="supporting" color="secondary">
-              {sending ? "正在保存…" : "模型尚未接入，消息保存后待 Agent 处理。"}
+              {sending ? "正在保存…" : "发送后保存消息；Agent 回复将在后续功能接入。"}
             </Text>
           }
         />

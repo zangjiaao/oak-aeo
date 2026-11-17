@@ -71,10 +71,27 @@ test("load failure offers retry and preserves a draft while storage recovers", a
   await expect(page.getByText("会话未加载，可先输入草稿，再重试加载。")).toBeVisible();
   const draft = `未加载时的草稿 ${crypto.randomUUID()}`;
   await page.getByRole("textbox", { name: "消息内容" }).fill(draft);
+  await expect(page.getByRole("button", { name: "发送消息", exact: true })).toBeEnabled();
   await page.unroute("**/api/conversation");
   await page.getByRole("button", { name: "刷新会话" }).click();
   await expect(page.getByText("引导 · okdata · 会话已保存")).toBeVisible();
   await expect(page.getByRole("textbox", { name: "消息内容" })).toHaveValue(draft);
   await page.getByRole("button", { name: "发送消息", exact: true }).click();
   await expect(page.getByRole("log").getByText(draft, { exact: true })).toBeVisible();
+});
+
+test("can send Chinese text while history is still loading", async ({ page }) => {
+  await page.route("**/api/conversation", async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await route.fulfill({ status: 503, json: { error: "历史加载失败" } });
+  });
+  await page.goto("/");
+  await expect(page.getByText("正在加载会话…")).toBeVisible();
+  const message = `输入后可以发送 ${crypto.randomUUID()}`;
+  await page.getByRole("textbox", { name: "消息内容" }).fill(message);
+  await expect(page.getByRole("button", { name: "发送消息", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "发送消息", exact: true }).click();
+  await expect(page.getByRole("log").getByText(message, { exact: true })).toBeVisible();
+  await expect(page.getByText("历史加载失败")).toHaveCount(0);
 });
