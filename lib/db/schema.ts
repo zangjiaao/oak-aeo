@@ -61,3 +61,12 @@ export const factVersions = sqliteTable("fact_version", {
   decidedBy: text("decided_by"),
   changedAt: text("changed_at").notNull(),
 }, (table) => [uniqueIndex("fact_version_pk").on(table.factId, table.version)]);
+
+export const agentActions = sqliteTable("agent_action", {
+  messageId: text("message_id").primaryKey().references(() => messages.id),
+  status: text("status", { enum: ["running", "complete", "failed"] }).notNull(),
+  sourceId: text("source_id").references(() => rawSources.id),
+  startedAt: text("started_at").notNull(),
+  completedAt: text("completed_at"),
+  error: text("error"),
+});

@@ -7,7 +7,7 @@ test("conversation continues between guide and workbench, reloads, and keeps mul
   await page.getByRole("textbox", { name: "消息内容" }).fill(message);
   await page.getByRole("button", { name: "发送消息", exact: true }).click();
   await expect(page.getByRole("log").getByText(message, { exact: true })).toBeVisible();
-  await expect(page.getByRole("article").filter({ hasText: message })).toContainText("已保存 · 待 Agent 处理");
+  await expect(page.getByRole("article").filter({ hasText: message })).toContainText("已保存 · 可分析官网链接");
   await expect(page.getByRole("textbox", { name: "消息内容" })).toHaveValue("");
   await page.reload();
   await expect(page.getByRole("log").getByText(message, { exact: true })).toBeVisible();
@@ -21,6 +21,43 @@ test("conversation continues between guide and workbench, reloads, and keeps mul
   await page.getByRole("link", { name: "引导", exact: true }).click();
   await expect(page.getByRole("log").getByText(followup, { exact: true })).toBeVisible();
   await page.screenshot({ path: "test-results/conversation.png", fullPage: true });
+});
+
+test("chat link explicitly captures a source and persists the agent result", async ({ page, request }) => {
+  await page.goto("/");
+  await expect(page.getByText("引导 · okdata · 会话已保存")).toBeVisible();
+  const message = `请分析官网文档 ${crypto.randomUUID()} https://okdata.online/llms.txt`;
+  await page.getByRole("textbox", { name: "消息内容" }).fill(message);
+  await page.getByRole("button", { name: "发送消息", exact: true }).click();
+  const userMessage = page.getByRole("article").filter({ hasText: message });
+  await userMessage.getByRole("button", { name: "请 Agent 分析官网链接" }).click();
+  await expect(userMessage).toContainText("已保存 · 官网分析完成");
+  await expect(page.getByRole("log").getByText(/官网来源已保存：/).last()).toBeVisible();
+  const first = await (await request.get("/api/conversation")).json();
+  const user = first.messages.find((item: { text: string }) => item.text === message);
+  const responseId = `fact-analysis-${user.id}`;
+  expect(first.messages.filter((item: { id: string }) => item.id === responseId)).toHaveLength(1);
+  const repeat = await request.post("/api/agent/analyze", { data: { messageId: user.id } });
+  expect(repeat.status()).toBe(200);
+  expect((await repeat.json()).messages.filter((item: { id: string }) => item.id === responseId)).toHaveLength(1);
+  await page.reload();
+  await expect(page.getByRole("article").filter({ hasText: message })).toContainText("已保存 · 官网分析完成");
+  await page.getByRole("link", { name: "查看来源与事实" }).last().click();
+  await expect(page.getByRole("heading", { name: "来源快照" })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "https://okdata.online/llms.txt" }).first()).toBeVisible();
+});
+
+test("system settings report model readiness without exposing a key", async ({ page, request }) => {
+  await page.goto("/work/system");
+  await expect(page.getByRole("heading", { name: "Pi Agent 模型" })).toBeVisible();
+  await expect(page.getByText("状态：未配置")).toBeVisible();
+  await expect(page.getByRole("button", { name: "测试模型连接" })).toBeDisabled();
+  const response = await request.get("/api/model");
+  expect(response.status()).toBe(200);
+  const status = await response.json();
+  expect(status.missing).toContain("GEO_MODEL_API_KEY");
+  expect(JSON.stringify(status)).not.toContain("你的密钥");
+  expect((await request.post("/api/model")).status()).toBe(409);
 });
 
 test("offline draft survives refresh; retry after a lost acknowledgement is idempotent", async ({ page }) => {

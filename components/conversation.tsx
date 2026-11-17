@@ -33,6 +33,7 @@ export function Conversation() {
   const [draft, setDraft] = useState<SendMessage>({ id: "", text: "" });
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [analyzing, setAnalyzing] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [storageWarning, setStorageWarning] = useState("");
   const locked = useRef(false);
@@ -133,6 +134,23 @@ export function Conversation() {
     }
   }
 
+  async function analyze(messageId: string) {
+    if (analyzing) return;
+    setAnalyzing(messageId);
+    setError("");
+    try {
+      const updated = await readResponse(await fetch("/api/agent/analyze", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId }), signal: AbortSignal.timeout(70000),
+      }));
+      setHistory(updated);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "官网分析失败，请重试。");
+    } finally {
+      setAnalyzing(null);
+    }
+  }
+
   const tooLong = draft.text.length > MAX_MESSAGE_LENGTH;
   return (
     <ChatLayout
@@ -165,7 +183,7 @@ export function Conversation() {
           status={error || tooLong || storageWarning ? { type: "error", message: error || (tooLong ? "每条最多 8000 字符，请分段发送。" : storageWarning) } : undefined}
           footerActions={
             <Text type="supporting" color="secondary">
-              {sending ? "正在保存…" : "发送后保存消息；Agent 回复将在后续功能接入。"}
+              {sending ? "正在保存…" : "发送官网链接后，点击消息中的「请 Agent 分析官网链接」；普通聊天回复尚未接入。"}
             </Text>
           }
         />
@@ -184,13 +202,23 @@ export function Conversation() {
               <ChatMessageBubble variant={message.role === "assistant" ? "ghost" : "filled"}>
                 <Text type="body" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{message.text}</Text>
                 {message.role === "user" && officialLink(message.text) ? (
-                  <Button label="用官网链接建立来源快照" size="sm" variant="ghost"
-                    href={`/work/brand?url=${encodeURIComponent(officialLink(message.text)!)}`} />
+                  <HStack gap={2}>
+                    {!history.messages.some((reply) => reply.id === `fact-analysis-${message.id}`) ?
+                      <Button label="请 Agent 分析官网链接" size="sm" variant="primary"
+                        isLoading={analyzing === message.id} isDisabled={Boolean(analyzing)}
+                        onClick={() => { void analyze(message.id); }} /> : null}
+                    <Button label="前往品牌设置" size="sm" variant="ghost"
+                      href={`/work/brand?url=${encodeURIComponent(officialLink(message.text)!)}`} />
+                  </HStack>
                 ) : null}
+                {message.id.startsWith("fact-analysis-") ?
+                  <Button label="查看来源与事实" size="sm" variant="ghost" href="/work/brand" /> : null}
               </ChatMessageBubble>
               <ChatMessageMetadata
                 timestamp={<Timestamp value={message.createdAt} format="time" />}
-                footer={message.status === "pending_agent" ? "已保存 · 待 Agent 处理" : undefined}
+                footer={message.role === "user" ?
+                  history.messages.some((reply) => reply.id === `fact-analysis-${message.id}`) ? "已保存 · 官网分析完成" :
+                    officialLink(message.text) ? "已保存 · 可分析官网链接" : "已保存 · 普通聊天回复未接入" : undefined}
               />
             </ChatMessage>
           ))}

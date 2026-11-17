@@ -50,7 +50,7 @@ test("a chat URL opens brand source capture with the URL prefilled", async ({ pa
   const link = "https://okdata.online/llms.txt";
   await page.getByRole("textbox", { name: "消息内容" }).fill("请采集 okdata.online/llms.txt。");
   await page.getByRole("button", { name: "发送消息", exact: true }).click();
-  await page.getByRole("link", { name: "用官网链接建立来源快照" }).last().click();
+  await page.getByRole("link", { name: "前往品牌设置" }).last().click();
   await expect(page).toHaveURL(/\/work\/brand\?url=/);
   await expect(page.getByRole("textbox", { name: "官网链接" })).toHaveValue(link);
 });

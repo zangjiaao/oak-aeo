@@ -1,7 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import { CONVERSATION_ID, WELCOME_MESSAGE, type ConversationHistory, type SendMessage } from "../conversation";
-import { conversations, messages } from "./schema";
+import { conversations, messages, agentActions } from "./schema";
 
 export class MessageConflictError extends Error {}
 
@@ -40,5 +40,38 @@ export function conversationRepository(db: DrizzleD1Database<Record<string, unkn
     return history();
   }
 
-  return { history, append };
+  async function findUserMessage(id: string) {
+    const [message] = await db.select().from(messages).where(eq(messages.id, id));
+    return message?.conversationId === CONVERSATION_ID && message.role === "user" ? message : null;
+  }
+
+  async function claimAnalysis(messageId: string) {
+    const now = new Date().toISOString();
+    const inserted = await db.insert(agentActions).values({ messageId, status: "running", startedAt: now })
+      .onConflictDoNothing().returning({ messageId: agentActions.messageId });
+    if (inserted.length) return "claimed" as const;
+    const [action] = await db.select().from(agentActions).where(eq(agentActions.messageId, messageId));
+    if (action?.status === "complete") return "complete" as const;
+    if (action?.status === "running" && Date.now() - Date.parse(action.startedAt) < 60_000) return "running" as const;
+    await db.update(agentActions).set({ status: "running", startedAt: now, completedAt: null, error: null })
+      .where(eq(agentActions.messageId, messageId));
+    return "claimed" as const;
+  }
+
+  async function finishAnalysis(messageId: string, response: string, sourceId: string) {
+    const now = new Date().toISOString();
+    await db.batch([
+      db.insert(messages).values({ id: `fact-analysis-${messageId}`, conversationId: CONVERSATION_ID,
+        role: "assistant", text: response, status: "complete", createdAt: now }).onConflictDoNothing(),
+      db.update(agentActions).set({ status: "complete", sourceId, completedAt: now }).where(eq(agentActions.messageId, messageId)),
+    ]);
+    return history();
+  }
+
+  async function failAnalysis(messageId: string, error: string) {
+    await db.update(agentActions).set({ status: "failed", error, completedAt: new Date().toISOString() })
+      .where(eq(agentActions.messageId, messageId));
+  }
+
+  return { history, append, findUserMessage, claimAnalysis, finishAnalysis, failAnalysis };
 }
