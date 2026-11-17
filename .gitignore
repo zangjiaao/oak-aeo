@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local Cloudflare data and browser test artifacts
+/.wrangler/
+/.dev.vars*
+/test-results/
+/playwright-report/

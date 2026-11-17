@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "oak-geo",
+  "compatibility_date": "2026-11-16",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "oak-geo",
+      // Local placeholder. No remote database is provisioned by this feature.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

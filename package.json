@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:migrate": "wrangler d1 migrations apply DB --local",
+    "test": "tsx --test tests/*.test.ts",
+    "test:e2e": "node scripts/test-e2e.mjs"
   },
   "dependencies": {
     "@astryxdesign/cli": "^0.7.16",
@@ -14,16 +17,21 @@
     "@astryxdesign/theme-neutral": "^0.7.16",
     "@heroicons/react": "^2.2.0",
     "@stylexjs/stylex": "^0.19.2",
+    "drizzle-orm": "^0.45.4",
     "next": "16.4.6",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
-    "typescript": "^5"
+    "tsx": "^4.23.15",
+    "typescript": "^5",
+    "wrangler": "^4.163.0"
   }
 }
