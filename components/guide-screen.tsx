@@ -49,13 +49,13 @@ export function GuideScreen() {
     <AppShell height="fill" variant="section" contentPadding={0} topNav={<AppHeader />}>
       {hasSideProgress ?
         <Layout height="fill" contentWidth={1600}
-          start={<LayoutPanel width={300} padding={6} isScrollable={false} role="complementary" label="引导进度">
-            <VStack height="100%" vAlign="center">
+          start={<LayoutPanel width={220} padding={6} isScrollable={false} role="complementary" label="引导进度">
+            <VStack height="100%" vAlign="center" hAlign="end">
               <ProgressLabels activeStep={activeStep} vertical />
             </VStack>
           </LayoutPanel>}
           content={<Layout height="fill" contentWidth={720} content={conversation} />}
-          end={<LayoutPanel width={300} padding={0} isScrollable={false} aria-hidden="true" />}
+          end={<LayoutPanel width={220} padding={0} isScrollable={false} aria-hidden="true" />}
         /> :
         <Layout height="fill" contentWidth={720}
           header={<LayoutHeader><ProgressLabels activeStep={activeStep} vertical={false} /></LayoutHeader>}

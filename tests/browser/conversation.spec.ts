@@ -111,10 +111,14 @@ test("wide guide places vertical progress beside chat and keeps a compact narrow
   expect(activeStyle.size).toBeGreaterThan(inactiveStyle.size);
   expect(activeStyle.color).not.toBe(inactiveStyle.color);
   const railBox = await rail.boundingBox();
+  const labelsBox = await rail.getByRole("list", { name: "引导进度" }).boundingBox();
   const chatBox = await chat.boundingBox();
   expect(railBox).not.toBeNull();
+  expect(labelsBox).not.toBeNull();
   expect(chatBox).not.toBeNull();
   expect(railBox!.x + railBox!.width).toBeLessThan(chatBox!.x);
+  expect(labelsBox!.x).toBeGreaterThan(railBox!.x + railBox!.width / 2);
+  expect(chatBox!.x - labelsBox!.x - labelsBox!.width).toBeLessThan(300);
   expect(chatBox!.width).toBeLessThanOrEqual(760);
   await page.screenshot({ path: "test-results/guide-side-progress.png", fullPage: true });
   await page.setViewportSize({ width: 900, height: 700 });
