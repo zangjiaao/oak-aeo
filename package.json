@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "npm run db:migrate",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:migrate": "wrangler d1 migrations apply DB --local",
+    "db:migrate": "node scripts/migrate-local.mjs",
     "test": "tsx --test tests/*.test.ts tests/*.test.mts",
     "test:e2e": "node scripts/test-e2e.mjs"
   },

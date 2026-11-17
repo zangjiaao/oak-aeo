@@ -33,6 +33,13 @@ export async function POST(request: Request) {
       return json({ error: `Agent 回复失败：${error instanceof Error ? error.message.slice(0, 240) : "请检查模型连接后重试。"}` }, 502);
     }
   } catch (error) {
+    let cause: unknown = error;
+    while (cause instanceof Error) {
+      if (/no such table: agent_reply/i.test(cause.message)) {
+        return json({ error: "本地 D1 缺少 agent_reply 表。停止开发服务，运行 npm run db:migrate 后重新运行 npm run dev。消息已保存，可稍后重试。" }, 503);
+      }
+      cause = cause.cause;
+    }
     console.error("Agent conversation storage failed:", error);
     return json({ error: "会话服务暂不可用，请刷新后重试。" }, 503);
   }

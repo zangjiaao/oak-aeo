@@ -10,11 +10,10 @@
 
 ```bash
 npm ci
-npm run db:migrate
 npm run dev
 ```
 
-访问 `http://localhost:3000`。已有本地数据会保留；后续迁移只新增来源、事实、版本及 Agent 动作与回复表。D1 与 R2 本地数据都位于 `.wrangler/state/v3`，不要把这个目录提交到 Git。命令里的冒号后不要附加中文句号：运行 `npm run db:migrate`，不要运行 `npm run db:migrate。`。
+`npm run dev` 会先自动应用尚未执行的本地 D1 迁移，再启动 Next。拉取新代码后如果开发服务已在运行，请停止并重新运行 `npm run dev`；缺表时也可单独运行 `npm run db:migrate`，然后重启服务。访问 `http://localhost:3000`。已有本地数据会保留；后续迁移只新增来源、事实、版本及 Agent 动作与回复表。D1 与 R2 本地数据都位于 `.wrangler/state/v3`，不要把这个目录提交到 Git。命令里的冒号后不要附加中文句号：运行 `npm run db:migrate`，不要运行 `npm run db:migrate。`。
 
 ## 配置 Pi Agent 模型
 
