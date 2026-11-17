@@ -50,7 +50,7 @@ export function GuideScreen() {
       {hasSideProgress ?
         <Layout height="fill" contentWidth={1600}
           start={<LayoutPanel width={220} padding={6} isScrollable={false} role="complementary" label="引导进度">
-            <VStack height="100%" vAlign="center" hAlign="end">
+            <VStack height="100%" vAlign="start" hAlign="end">
               <ProgressLabels activeStep={activeStep} vertical />
             </VStack>
           </LayoutPanel>}

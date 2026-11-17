@@ -118,6 +118,7 @@ test("wide guide places vertical progress beside chat and keeps a compact narrow
   expect(chatBox).not.toBeNull();
   expect(railBox!.x + railBox!.width).toBeLessThan(chatBox!.x);
   expect(labelsBox!.x).toBeGreaterThan(railBox!.x + railBox!.width / 2);
+  expect(labelsBox!.y - railBox!.y).toBeLessThan(100);
   expect(chatBox!.x - labelsBox!.x - labelsBox!.width).toBeLessThan(300);
   expect(chatBox!.width).toBeLessThanOrEqual(760);
   await page.screenshot({ path: "test-results/guide-side-progress.png", fullPage: true });
