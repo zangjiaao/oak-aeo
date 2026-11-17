@@ -30,7 +30,7 @@ export function AppHeader() {
       }
       endContent={
         <Text type="supporting" color="secondary">
-          骨架 · 今日 0/5
+          okdata · 品牌工作台
         </Text>
       }
     />
