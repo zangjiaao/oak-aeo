@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Avatar } from "@astryxdesign/core/Avatar";
 import { Button } from "@astryxdesign/core/Button";
 import { ChatComposer, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, ChatMessageMetadata } from "@astryxdesign/core/Chat";
@@ -192,6 +192,7 @@ export function Conversation({ onHistoryChange }: { onHistoryChange?: (history: 
       style={{ height: "100%", minHeight: 0, scrollbarWidth: "none" }}
       composer={
         <ChatComposer
+          style={{ "--radius-chat": "var(--radius-container)" } as CSSProperties}
           value={draft.text}
           onChange={changeDraft}
           onSubmit={() => { void send(); }}
@@ -235,7 +236,8 @@ export function Conversation({ onHistoryChange }: { onHistoryChange?: (history: 
         <ChatMessageList>
           {history?.messages.map((message) => (
             <ChatMessage key={message.id} sender={message.role} avatar={message.role === "assistant" ? <Avatar name="Agent" size="md" /> : undefined}>
-              <ChatMessageBubble variant={message.role === "assistant" ? "ghost" : "filled"}>
+              <ChatMessageBubble variant={message.role === "assistant" ? "ghost" : "filled"}
+                style={message.role === "user" ? { borderRadius: "var(--radius-container)" } : undefined}>
                 <Text type="body" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{message.text}</Text>
                 {message.role === "user" && officialLink(message.text) ? (
                   <HStack gap={2}>
