@@ -30,7 +30,7 @@ export function AgentPage() {
           <VStack gap={2}>
             <Heading level={2}>开场收集</Heading>
             <Text type="body">请描述产品，消息将保留在同一条会话中。</Text>
-            <Text type="supporting" color="secondary">模型尚未接入。待处理消息不会自动变成事实块。</Text>
+            <Text type="supporting" color="secondary">配置 DeepSeek 后，Pi Agent 会自动回复。口述事实需核验后才能生效。</Text>
           </VStack>
         </LayoutPanel>
       }

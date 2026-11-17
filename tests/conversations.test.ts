@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { drizzle } from "drizzle-orm/d1";
 import { getPlatformProxy, unstable_splitSqlQuery } from "wrangler";
 import { conversationRepository, MessageConflictError } from "../lib/db/conversations";
-import { isSendMessage, MAX_MESSAGE_LENGTH } from "../lib/conversation";
+import { isSendMessage, MAX_MESSAGE_LENGTH, officialLink } from "../lib/conversation";
 
 let path: string;
 before(async () => { path = await mkdtemp(join(tmpdir(), "oak-conversation-test-")); });
@@ -31,6 +31,11 @@ test("validates messages without accepting forged role/status, blank or oversize
     { id, text: "text", status: "complete" }]) {
     assert.equal(isSendMessage(value), false);
   }
+});
+
+test("recognizes a bare official domain without including sentence punctuation", () => {
+  assert.equal(officialLink("官网在 okdata.online/llms.txt。"), "https://okdata.online/llms.txt");
+  assert.equal(officialLink("https://evilokdata.online/llms.txt"), null);
 });
 
 test("D1 persists one shared conversation, atomically deduplicates retries and survives restart", async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Avatar } from "@astryxdesign/core/Avatar";
 import { Button } from "@astryxdesign/core/Button";
 import { ChatComposer, ChatLayout, ChatMessage, ChatMessageBubble, ChatMessageList, ChatMessageMetadata } from "@astryxdesign/core/Chat";
@@ -8,7 +8,7 @@ import { HStack, VStack } from "@astryxdesign/core/Layout";
 import { Text } from "@astryxdesign/core/Text";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { Timestamp } from "@astryxdesign/core/Timestamp";
-import { CONVERSATION_ID, MAX_MESSAGE_LENGTH, isSendMessage, type ConversationHistory, type SendMessage } from "@/lib/conversation";
+import { CONVERSATION_ID, MAX_MESSAGE_LENGTH, isSendMessage, officialLink, type ConversationHistory, type SendMessage } from "@/lib/conversation";
 
 const DRAFT_KEY = `${CONVERSATION_ID}:draft:v1`;
 
@@ -28,15 +28,20 @@ async function readResponse(response: Response): Promise<ConversationHistory> {
   return body;
 }
 
-export function Conversation() {
+export function Conversation({ onHistoryChange }: { onHistoryChange?: (history: ConversationHistory) => void } = {}) {
   const [history, setHistory] = useState<ConversationHistory | null>(null);
   const [draft, setDraft] = useState<SendMessage>({ id: "", text: "" });
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [replying, setReplying] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState<string | null>(null);
+  const [modelReady, setModelReady] = useState<boolean | null>(null);
   const [error, setError] = useState("");
   const [storageWarning, setStorageWarning] = useState("");
   const locked = useRef(false);
   const sendRevision = useRef(0);
+
+  useEffect(() => { if (history) onHistoryChange?.(history); }, [history, onHistoryChange]);
 
   function persist(next: SendMessage) {
     try {
@@ -49,6 +54,10 @@ export function Conversation() {
 
   useEffect(() => {
     const controller = new AbortController();
+    void fetch("/api/model", { cache: "no-store", signal: controller.signal })
+      .then((response) => response.json())
+      .then((status: { configured: boolean }) => { if (!controller.signal.aborted) setModelReady(status.configured); })
+      .catch(() => { if (!controller.signal.aborted) setModelReady(false); });
     const revision = sendRevision.current;
     async function restore() {
       let local: SendMessage | null = null;
@@ -125,6 +134,8 @@ export function Conversation() {
       setLoading(false);
       setDraft({ id: "", text: "" });
       persist({ id: "", text: "" });
+      setSending(false);
+      await requestReply(draft.id);
     } catch (failure) {
       setError(`${failure instanceof Error ? failure.message : "发送失败，请检查网络。"} 输入已保留，可重新发送。`);
     } finally {
@@ -133,12 +144,55 @@ export function Conversation() {
     }
   }
 
+  async function requestReply(messageId: string) {
+    setReplying(messageId);
+    try {
+      const updated = await readResponse(await fetch("/api/agent/respond", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId }), signal: AbortSignal.timeout(70000),
+      }));
+      setHistory(updated);
+      setError("");
+    } catch (failure) {
+      setError(`${failure instanceof Error ? failure.message : "Agent 回复失败。"} 消息已保存，可点击「让 Agent 回复」重试。`);
+    } finally {
+      setReplying(null);
+    }
+  }
+
+  async function retryReply(messageId: string) {
+    if (locked.current || replying) return;
+    locked.current = true;
+    setError("");
+    try { await requestReply(messageId); }
+    finally { locked.current = false; }
+  }
+
+  async function analyze(messageId: string) {
+    if (analyzing) return;
+    setAnalyzing(messageId);
+    setError("");
+    try {
+      const updated = await readResponse(await fetch("/api/agent/analyze", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId }), signal: AbortSignal.timeout(70000),
+      }));
+      setHistory(updated);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "官网分析失败，请重试。");
+    } finally {
+      setAnalyzing(null);
+    }
+  }
+
   const tooLong = draft.text.length > MAX_MESSAGE_LENGTH;
   return (
     <ChatLayout
-      style={{ height: "100%", minHeight: 0 }}
+      data-testid="conversation-scroll"
+      style={{ height: "100%", minHeight: 0, scrollbarWidth: "none" }}
       composer={
         <ChatComposer
+          style={{ "--radius-chat": "var(--radius-container)" } as CSSProperties}
           value={draft.text}
           onChange={changeDraft}
           onSubmit={() => { void send(); }}
@@ -151,7 +205,7 @@ export function Conversation() {
               onChange={changeDraft}
               placeholder="描述产品或粘贴官网链接。"
               rows={3}
-              isReadOnly={sending}
+              isReadOnly={sending || Boolean(replying)}
               enterKeyHint="send"
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -161,11 +215,11 @@ export function Conversation() {
               }}
             />
           }
-          sendButton={<Button label="发送消息" variant="primary" isLoading={sending} isDisabled={!draft.text.trim() || tooLong} onClick={() => { void send(); }} />}
+          sendButton={<Button label="发送消息" variant="primary" isLoading={sending} isDisabled={!draft.text.trim() || tooLong || Boolean(replying)} onClick={() => { void send(); }} />}
           status={error || tooLong || storageWarning ? { type: "error", message: error || (tooLong ? "每条最多 8000 字符，请分段发送。" : storageWarning) } : undefined}
           footerActions={
             <Text type="supporting" color="secondary">
-              {sending ? "正在保存…" : "发送后保存消息；Agent 回复将在后续功能接入。"}
+              {sending ? "正在保存…" : replying ? "Pi Agent 正在回复…" : modelReady === false ? "Pi Agent 未配置；消息会保存，请到系统设置配置 DeepSeek。" : "发送后 Pi Agent 会回复；官网来源可单独采集并审核。"}
             </Text>
           }
         />
@@ -177,16 +231,37 @@ export function Conversation() {
             {loading ? "正在加载会话…" : history ? "引导 · okdata · 会话已保存" : "会话未加载，可先输入草稿，再重试加载。"}
           </Text>
           <Button label="刷新会话" size="sm" variant="ghost" isDisabled={loading || sending} onClick={() => { void reload(); }} />
+          {modelReady === false ? <Button label="配置 DeepSeek 模型" size="sm" variant="ghost" href="/work/system" /> : null}
         </HStack>
         <ChatMessageList>
           {history?.messages.map((message) => (
             <ChatMessage key={message.id} sender={message.role} avatar={message.role === "assistant" ? <Avatar name="Agent" size="md" /> : undefined}>
-              <ChatMessageBubble variant={message.role === "assistant" ? "ghost" : "filled"}>
+              <ChatMessageBubble variant={message.role === "assistant" ? "ghost" : "filled"}
+                style={message.role === "user" ? { borderRadius: "var(--radius-container)" } : undefined}>
                 <Text type="body" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{message.text}</Text>
+                {message.role === "user" && officialLink(message.text) ? (
+                  <HStack gap={2}>
+                    {!history.messages.some((reply) => reply.id === `fact-analysis-${message.id}`) ?
+                      <Button label="请 Agent 分析官网链接" size="sm" variant="primary"
+                        isLoading={analyzing === message.id} isDisabled={Boolean(analyzing || replying)}
+                        onClick={() => { void analyze(message.id); }} /> : null}
+                    <Button label="前往品牌设置" size="sm" variant="ghost"
+                      href={`/work/brand?url=${encodeURIComponent(officialLink(message.text)!)}`} />
+                  </HStack>
+                ) : null}
+                {message.role === "user" && !history.messages.some((reply) => reply.id === `agent-reply-${message.id}`) ?
+                  <Button label="让 Agent 回复" size="sm" variant="ghost" isLoading={replying === message.id}
+                    isDisabled={Boolean(replying || analyzing) || sending} onClick={() => { void retryReply(message.id); }} /> : null}
+                {message.id.startsWith("fact-analysis-") ?
+                  <Button label="查看来源与事实" size="sm" variant="ghost" href="/work/brand" /> : null}
               </ChatMessageBubble>
               <ChatMessageMetadata
                 timestamp={<Timestamp value={message.createdAt} format="time" />}
-                footer={message.status === "pending_agent" ? "已保存 · 待 Agent 处理" : undefined}
+                footer={message.role === "user" ?
+                  history.messages.some((reply) => reply.id === `agent-reply-${message.id}`) ? "已保存 · Agent 已回复" :
+                    history.messages.some((reply) => reply.id === `fact-analysis-${message.id}`) ? "已保存 · 官网分析完成 · 待 Agent 回复" :
+                    replying === message.id ? "已保存 · Agent 正在回复" :
+                      modelReady === false ? "已保存 · 等待模型配置" : "已保存 · 待 Agent 回复" : undefined}
               />
             </ChatMessage>
           ))}
